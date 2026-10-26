@@ -3,9 +3,12 @@
 The native library (see the repository root) exposed to the JVM through the
 Foreign Function & Memory API. No JNA, no JNI, no runtime dependencies.
 
+Published as `io.github.wuyuan2009123:simdpaddleocr4j` and
+`io.github.wuyuan2009123:simdpaddleocr-server`.
+
 | module | artifact | what |
 | --- | --- | --- |
-| `core` | `simdpaddleocr-java` | FFM binding + all six 64-bit natives inside the jar |
+| `core` | `simdpaddleocr4j` | FFM binding + all six 64-bit natives inside the jar |
 | `server` | `simdpaddleocr-server` | Spring Boot 4 REST API |
 
 ## Build
