@@ -118,6 +118,8 @@ internal static unsafe class Program
                     $"({line.X3:F0},{line.Y3:F0}) ({line.X4:F0},{line.Y4:F0}) '{text}'");
             }
 
+            // Capture before freeing: ocr_result_free zeroes the struct.
+            int detectedCount = result.DetectedCount;
             resultFree(&result);
             if (result.Lines != null || result.Count != 0)
             {
@@ -136,7 +138,7 @@ internal static unsafe class Program
             {
                 Console.WriteLine("warn    : no typeface available, only the blank-image path was exercised");
             }
-            else if (result.DetectedCount == 0)
+            else if (detectedCount == 0)
             {
                 Console.Error.WriteLine("FAIL the rendered sample produced no detections");
                 return 1;

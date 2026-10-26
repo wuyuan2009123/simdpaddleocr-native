@@ -106,7 +106,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $stage, 'dist' | Out-Null
           Copy-Item "out/$rid/$lib" $stage
           Copy-Item 'native/simdpaddleocr.h' $stage
-          Copy-Item '.upstream/LICENSE', '.upstream/THIRD-PARTY-NOTICES.md', 'out/$rid/version.txt' $stage
+          Copy-Item '.upstream/LICENSE', '.upstream/THIRD-PARTY-NOTICES.md', "out/$rid/version.txt" $stage
 
           $name = "simdpaddleocr-native-$version-$rid"
           if ($IsWindows) {
