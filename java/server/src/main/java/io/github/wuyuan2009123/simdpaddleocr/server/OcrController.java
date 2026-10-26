@@ -1,5 +1,6 @@
 package io.github.wuyuan2009123.simdpaddleocr.server;
 
+import io.github.wuyuan2009123.simdpaddleocr.ImageSupport;
 import io.github.wuyuan2009123.simdpaddleocr.OcrException;
 import io.github.wuyuan2009123.simdpaddleocr.OcrResult;
 import java.io.IOException;
@@ -38,9 +39,9 @@ public class OcrController {
     @PostMapping(path = "/ocr", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public OcrResponse recognize(@RequestParam("file") MultipartFile file,
                                  @RequestParam(value = "variant", required = false) String variant) throws IOException {
-        ImageDecoder.Pixels pixels = ImageDecoder.decode(file.getBytes());
+        ImageSupport.Image image = ImageSupport.decode(file.getBytes());
         long started = System.nanoTime();
-        OcrResult result = service.recognize(pixels, variant);
+        OcrResult result = service.recognize(image, variant);
         return new OcrResponse(
                 variant == null || variant.isBlank() ? "default" : variant,
                 (System.nanoTime() - started) / 1_000_000,

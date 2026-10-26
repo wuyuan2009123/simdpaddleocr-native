@@ -1,0 +1,74 @@
+name: java-release
+
+# Publishes io.github.wuyuan2009123:simdpaddleocr4j to Maven Central.
+# Tag java-v1.0.0 -> deploy; the Sonatype portal then needs a manual Publish
+# click unless autoPublish is flipped to true in the release profile.
+
+on:
+  push:
+    tags: ['java-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: java-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: deploy simdpaddleocr4j
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: java/pom.xml
+
+      - name: Import the GPG signing key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          gpg --list-secret-keys --keyid-format=long
+
+      - name: Write the Maven settings
+        env:
+          CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<XML
+          <settings>
+            <servers>
+              <server>
+                <id>central</id>
+                <username>$CENTRAL_USERNAME</username>
+                <password>$CENTRAL_PASSWORD</password>
+              </server>
+            </servers>
+          </settings>
+          XML
+
+      - name: Check the tag matches the POM version
+        if: startsWith(github.ref, 'refs/tags/java-v')
+        run: |
+          set -euo pipefail
+          pom_version=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' java/pom.xml | head -1)
+          tag_version="${{ github.ref_name }}"
+          tag_version="${tag_version#java-v}"
+          echo "pom=$pom_version tag=$tag_version"
+          test "$pom_version" = "$tag_version"
+
+      - name: Deploy
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        run: mvn -B -f java/pom.xml -P release -pl core -am deploy

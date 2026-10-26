@@ -1,6 +1,5 @@
-package io.github.wuyuan2009123.simdpaddleocr.server;
+package io.github.wuyuan2009123.simdpaddleocr;
 
-import io.github.wuyuan2009123.simdpaddleocr.OcrEngine.PixelFormat;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -8,29 +7,30 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import javax.imageio.ImageIO;
 
-/** Decodes an encoded image into the BGRA32 bytes the engine expects. */
-final class ImageDecoder {
+/** Decodes encoded images (PNG/JPEG/BMP/GIF) into the packed pixels the engine wants. */
+public final class ImageSupport {
 
-    record Pixels(byte[] data, int width, int height) {
-        PixelFormat format() {
-            return PixelFormat.BGRA32;
-        }
+    /** Interleaved BGRA32 pixels plus their dimensions. */
+    public record Image(byte[] bgra, int width, int height) {
     }
 
-    private ImageDecoder() {
+    private ImageSupport() {
     }
 
-    static Pixels decode(byte[] encoded) {
-        BufferedImage source;
+    public static Image decode(byte[] encoded) {
+        BufferedImage image;
         try {
-            source = ImageIO.read(new ByteArrayInputStream(encoded));
+            image = ImageIO.read(new ByteArrayInputStream(encoded));
         } catch (IOException e) {
             throw new UncheckedIOException("cannot read image", e);
         }
-        if (source == null) {
+        if (image == null) {
             throw new IllegalArgumentException("unsupported image format; send PNG, JPEG, BMP or GIF");
         }
+        return toBgra(image);
+    }
 
+    public static Image toBgra(BufferedImage source) {
         BufferedImage argb = source;
         if (source.getType() != BufferedImage.TYPE_INT_ARGB) {
             argb = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_ARGB);
@@ -53,6 +53,6 @@ final class ImageDecoder {
             bgra[o + 2] = (byte) (value >> 16);
             bgra[o + 3] = (byte) (value >> 24);
         }
-        return new Pixels(bgra, width, height);
+        return new Image(bgra, width, height);
     }
 }

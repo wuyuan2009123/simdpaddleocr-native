@@ -8,6 +8,12 @@ obj/
 
 # Java build output
 target/
+java/**/target/
+
+# Maven wrapper
+.mvn/
+mvnw
+mvnw.cmd
 
 # CI scratch
 out/

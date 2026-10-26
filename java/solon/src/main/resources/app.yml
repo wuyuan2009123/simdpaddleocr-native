@@ -1,0 +1,10 @@
+server:
+  port: 8080
+
+solon:
+  app:
+    name: simdpaddleocr-solon
+
+simdpaddleocr:
+  models-dir: ./models
+  variant: small

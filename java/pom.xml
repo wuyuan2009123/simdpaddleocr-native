@@ -9,15 +9,143 @@
   <version>1.0.0</version>
   <packaging>pom</packaging>
   <name>SimdPaddleOCR native bindings</name>
+  <description>Java bindings for the SimdPaddleOCR NativeAOT shared library</description>
+  <url>https://github.com/wuyuan2009123/simdpaddleocr-native</url>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>wuyuan2009123</id>
+      <name>wuyuan2009123</name>
+      <url>https://github.com/wuyuan2009123</url>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/wuyuan2009123/simdpaddleocr-native.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/wuyuan2009123/simdpaddleocr-native.git</developerConnection>
+    <url>https://github.com/wuyuan2009123/simdpaddleocr-native</url>
+    <tag>HEAD</tag>
+  </scm>
 
   <modules>
     <module>core</module>
     <module>server</module>
+    <module>solon</module>
   </modules>
 
   <properties>
     <maven.compiler.release>25</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spring-boot.version>4.1.2</spring-boot.version>
+    <solon.version>4.1.1</solon.version>
   </properties>
+
+  <profiles>
+    <!--
+      mvn -P release -pl core -am deploy
+      Signs with GPG and uploads to the Sonatype Central Portal. Requires
+      ~/.m2/settings.xml with a <server id="central"> and MAVEN_GPG_PASSPHRASE.
+    -->
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>3.3.1</version>
+            <configuration>
+              <!-- Sources only: the 27 MB of native binaries must not be duplicated. -->
+              <excludes>
+                <exclude>native/**</exclude>
+              </excludes>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>3.12.0</version>
+            <configuration>
+              <doclint>none</doclint>
+              <quiet>true</quiet>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.2.8</version>
+            <dependencies>
+              <!-- bcpg 1.81 asks for bcprov/bcutil via [1.81,1.82); Maven 4 RC cannot
+                   resolve that range through every mirror, so pin the versions. -->
+              <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>1.81</version>
+              </dependency>
+              <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcutil-jdk18on</artifactId>
+                <version>1.81</version>
+              </dependency>
+            </dependencies>
+            <configuration>
+              <gpgArguments>
+                <arg>--pinentry-mode</arg>
+                <arg>loopback</arg>
+              </gpgArguments>
+            </configuration>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>0.12.0</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <!-- false keeps the upload in "validated" state until you press
+                   Publish in the portal; flip to true to release automatically. -->
+              <autoPublish>false</autoPublish>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
+
