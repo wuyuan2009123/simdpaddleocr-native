@@ -1,0 +1,150 @@
+name: build
+
+# Builds a NativeAOT shared library from whatever SimdPaddleOCR revision you
+# point it at. Nothing from the engine is vendored here: every run clones
+# https://github.com/sdcb/SimdPaddleOCR and builds against that checkout.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      upstream-ref:
+        description: 'SimdPaddleOCR tag / branch / sha (empty = latest tag)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  build:
+    name: ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # smoke: the runner architecture can load the library it produced.
+          - { rid: win-x64,     os: windows-2025,     smoke: true,  archive: zip }
+          - { rid: win-arm64,   os: windows-11-arm,   smoke: true,  archive: zip }
+          - { rid: win-x86,     os: windows-2025,     smoke: false, archive: zip }
+          - { rid: linux-x64,   os: ubuntu-24.04,     smoke: true,  archive: tar.gz }
+          - { rid: linux-arm64, os: ubuntu-24.04-arm, smoke: true,  archive: tar.gz }
+          - { rid: osx-x64,     os: macos-26-intel,   smoke: true,  archive: tar.gz }
+          - { rid: osx-arm64,   os: macos-26,         smoke: true,  archive: tar.gz }
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check SDK
+        run: dotnet --version
+
+      - name: Install NativeAOT prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang zlib1g-dev
+
+      - name: Fetch SimdPaddleOCR
+        shell: bash
+        env:
+          UPSTREAM_REF: ${{ inputs.upstream-ref }}
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none --no-checkout \
+            https://github.com/sdcb/SimdPaddleOCR.git .upstream
+          ref="${UPSTREAM_REF:-$(git -C .upstream describe --tags --abbrev=0)}"
+          git -C .upstream checkout "$ref"
+          echo "upstream $(git -C .upstream describe --tags --always) @ $(git -C .upstream rev-parse --short HEAD)"
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw="$(git -C .upstream describe --tags --always)"
+          echo "value=${raw#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish NativeAOT shared library
+        shell: bash
+        run: >
+          dotnet publish native/SimdPaddleOcr.Native.csproj
+          -c Release -r ${{ matrix.rid }}
+          -p:UpstreamRoot="${{ github.workspace }}/.upstream"
+          -p:Version="${{ steps.version.outputs.value }}"
+          -o "out/${{ matrix.rid }}" --nologo
+
+      - name: Smoke test the C ABI
+        if: matrix.smoke
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $lib = if ($IsWindows) { 'simdpaddleocr.dll' }
+                 elseif ($IsMacOS) { 'libsimdpaddleocr.dylib' }
+                 else { 'libsimdpaddleocr.so' }
+          dotnet run --project smoke/Smoke.csproj -c Release -- --lib "out/${{ matrix.rid }}/$lib" --models .upstream/models --variant small
+          if ($LASTEXITCODE -ne 0) { throw "native smoke failed: $LASTEXITCODE" }
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rid = '${{ matrix.rid }}'
+          $lib = if ($IsWindows) { 'simdpaddleocr.dll' }
+                 elseif ($IsMacOS) { 'libsimdpaddleocr.dylib' }
+                 else { 'libsimdpaddleocr.so' }
+
+          $version = (Get-Content "out/$rid/version.txt" -Raw).Trim()
+          $stage = "stage/$rid"
+          New-Item -ItemType Directory -Force -Path $stage, 'dist' | Out-Null
+          Copy-Item "out/$rid/$lib" $stage
+          Copy-Item 'native/simdpaddleocr.h' $stage
+          Copy-Item '.upstream/LICENSE', '.upstream/THIRD-PARTY-NOTICES.md', 'out/$rid/version.txt' $stage
+
+          $name = "simdpaddleocr-native-$version-$rid"
+          if ($IsWindows) {
+            Compress-Archive -Path "$stage/*" -DestinationPath "dist/$name.zip"
+          } else {
+            tar -czf "dist/$name.tar.gz" -C $stage .
+          }
+          Get-ChildItem dist | Format-Table Name, Length
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: native-${{ matrix.rid }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: attach to release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Upload assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          ls -l dist
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" dist/* --title "$tag" --generate-notes
+          fi

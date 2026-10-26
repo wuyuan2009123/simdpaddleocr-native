@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Compiles the SimdPaddleOCR pipeline into a NativeAOT shared library
+    (dll / so / dylib). The engine itself is not vendored here: UpstreamRoot
+    points at a checkout of https://github.com/sdcb/SimdPaddleOCR, which CI
+    clones at build time.
+
+      dotnet publish native/SimdPaddleOcr.Native.csproj -c Release -r linux-x64 \
+        -p:UpstreamRoot=/path/to/SimdPaddleOCR
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>simdpaddleocr</AssemblyName>
+    <RootNamespace>Sdcb.SimdPaddleOCR.Native</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>preview</LangVersion>
+
+    <PublishAot>true</PublishAot>
+    <NativeLib>Shared</NativeLib>
+    <StripSymbols>true</StripSymbols>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
+
+    <!-- The engine's SIMD kernels need an AVX2 baseline on x64 to be reachable.
+         Override with -p:SimdOcrEnableAvx2=false for pre-AVX2 CPUs. -->
+    <SimdOcrEnableAvx2 Condition="'$(SimdOcrEnableAvx2)' == ''">true</SimdOcrEnableAvx2>
+    <IlcInstructionSet Condition="'$(SimdOcrEnableAvx2)' == 'true' and $(RuntimeIdentifier.EndsWith('x64'))">avx2</IlcInstructionSet>
+
+    <!-- Engine checkout. CI passes it explicitly; locally it falls back to a
+         sibling clone at ../sharp. -->
+    <UpstreamRoot Condition="'$(UpstreamRoot)' == ''">$(MSBuildThisFileDirectory)..\..\sharp</UpstreamRoot>
+    <UpstreamProject>$(UpstreamRoot)/src/Sdcb.SimdPaddleOCR/Sdcb.SimdPaddleOCR.csproj</UpstreamProject>
+  </PropertyGroup>
+
+  <Target Name="CheckUpstream" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(UpstreamProject)')"
+           Text="No SimdPaddleOCR checkout at '$(UpstreamRoot)'. Pass -p:UpstreamRoot=&lt;path&gt;." />
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="$(UpstreamProject)" />
+  </ItemGroup>
+
+  <!-- Lets the packaging step read the version without parsing MSBuild props. -->
+  <Target Name="WriteNativeVersion" AfterTargets="Publish">
+    <WriteLinesToFile File="$(PublishDir)version.txt" Lines="$(Version)" Overwrite="true" />
+  </Target>
+</Project>
