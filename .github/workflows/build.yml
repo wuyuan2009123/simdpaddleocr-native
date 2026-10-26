@@ -27,7 +27,8 @@ jobs:
   build:
     name: ${{ matrix.rid }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    # A stuck Intel macOS runner should fail fast instead of burning 45 minutes.
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -42,6 +43,17 @@ jobs:
           - { rid: osx-arm64,   os: macos-26,         smoke: true,  archive: tar.gz }
     steps:
       - uses: actions/checkout@v7
+
+      # Every run restores ILCompiler plus the SkiaSharp native assets; the
+      # AOT payload alone is tens of MB, so a warm cache pays for itself.
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('native/SimdPaddleOcr.Native.csproj', 'smoke/Smoke.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-${{ runner.arch }}-
+            nuget-${{ runner.os }}-
 
       - name: Check SDK
         run: dotnet --version
