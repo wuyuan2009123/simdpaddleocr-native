@@ -52,22 +52,11 @@ The `release` profile adds:
 The parent POM is deployed alongside the module because `simdpaddleocr4j`
 inherits from it.
 
-## CI release
+## CI release (GitHub Release only)
 
 `.github/workflows/java-release.yml` runs on a `java-v*` tag and on manual
-dispatch. Repo secrets it needs:
-
-| secret | value |
-| --- | --- |
-| `MAVEN_CENTRAL_USERNAME` | portal token username |
-| `MAVEN_CENTRAL_PASSWORD` | portal token password |
-| `MAVEN_GPG_PRIVATE_KEY` | `gpg --armor --export-secret-keys <fpr>` |
-| `MAVEN_GPG_PASSPHRASE` | key passphrase, empty for a passphrase-less key |
-
-```bash
-export FPR=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')
-gpg --armor --export-secret-keys "$FPR"     # paste into MAVEN_GPG_PRIVATE_KEY
-```
+dispatch. It builds the jars and attaches them to the GitHub Release — **it does
+not upload to Maven Central** and needs no secrets.
 
 Bump `<version>` in `java/pom.xml`, commit, then tag the same version:
 
@@ -75,19 +64,23 @@ Bump `<version>` in `java/pom.xml`, commit, then tag the same version:
 git tag java-v1.0.0 && git push origin java-v1.0.0
 ```
 
-The workflow refuses to run when the tag and the POM version disagree.
+The workflow refuses to run when the tag and the POM version disagree. Assets on
+the release:
 
-## GitHub Release artifacts
-
-Every `java-v*` tag also attaches `simdpaddleocr4j-<version>.jar`,
-`-sources.jar`, `-javadoc.jar` and `SHA256SUMS.txt` to the GitHub Release.
-That path needs no Sonatype account, so it is the reliable way to hand the jar
-out; the `central` job runs after it with `continue-on-error`, so a portal
-outage cannot hide assets that are already published.
+```
+simdpaddleocr4j-1.0.0.jar
+simdpaddleocr4j-1.0.0-sources.jar
+simdpaddleocr4j-1.0.0-javadoc.jar
+SHA256SUMS.txt
+```
 
 ```bash
 curl -LO https://github.com/wuyuan2009123/simdpaddleocr-native/releases/download/java-v1.0.0/simdpaddleocr4j-1.0.0.jar
 ```
+
+Maven Central stays a manual step (`mvn -P release -pl core -am deploy`). It
+needs the portal token in `~/.m2/settings.xml` and `MAVEN_GPG_PASSPHRASE` in the
+environment; CI never touches either.
 
 ## Portal step
 

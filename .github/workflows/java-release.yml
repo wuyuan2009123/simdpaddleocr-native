@@ -1,21 +1,13 @@
 name: java-release
 
-# Tag java-v1.0.0 ->
-#   build     : mvn package (jar + sources + javadoc)
-#   release   : attach those files to the GitHub Release  <- always works
-#   central   : best-effort deploy to Maven Central       <- needs the 4 secrets
-#
-# Manual runs can publish to Central without a tag.
+# Tag java-v1.0.0 -> build the jars and attach them to the GitHub Release.
+# Nothing is uploaded to Maven Central from CI; use `mvn -P release deploy`
+# locally (see java/PUBLISHING.md) when you want to publish there.
 
 on:
   push:
     tags: ['java-v*']
   workflow_dispatch:
-    inputs:
-      publish-central:
-        description: 'Also deploy to Maven Central'
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -50,6 +42,8 @@ jobs:
           test "$pom_version" = "$tag_version"
 
       - name: Package
+        # -P release only adds the sources/javadoc plugins here; signing and the
+        # central upload bind to verify/deploy, which this command never reaches.
         run: mvn -B -f java/pom.xml -P release -pl core -am package -DskipTests
 
       - name: Collect artifacts and checksums
@@ -93,54 +87,3 @@ jobs:
           else
             gh release create "$tag" dist/* --title "$tag" --generate-notes
           fi
-
-  central:
-    name: deploy to Maven Central
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/java-v') || inputs.publish-central
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    # A Sonatype/Cloudflare hiccup must not hide the jars that are already on
-    # the Release page.
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '25'
-          cache: maven
-          cache-dependency-path: java/pom.xml
-
-      - name: Import the GPG signing key
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
-        run: |
-          set -euo pipefail
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-          gpg --list-secret-keys --keyid-format=long
-
-      - name: Write the Maven settings
-        env:
-          CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-          CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-        run: |
-          set -euo pipefail
-          mkdir -p ~/.m2
-          cat > ~/.m2/settings.xml <<XML
-          <settings>
-            <servers>
-              <server>
-                <id>central</id>
-                <username>$CENTRAL_USERNAME</username>
-                <password>$CENTRAL_PASSWORD</password>
-              </server>
-            </servers>
-          </settings>
-          XML
-
-      - name: Deploy
-        env:
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
-        run: mvn -B -f java/pom.xml -P release -pl core -am deploy
