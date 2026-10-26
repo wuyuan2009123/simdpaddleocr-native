@@ -1,13 +1,21 @@
 name: java-release
 
-# Publishes io.github.wuyuan2009123:simdpaddleocr4j to Maven Central.
-# Tag java-v1.0.0 -> deploy; the Sonatype portal then needs a manual Publish
-# click unless autoPublish is flipped to true in the release profile.
+# Tag java-v1.0.0 ->
+#   build     : mvn package (jar + sources + javadoc)
+#   release   : attach those files to the GitHub Release  <- always works
+#   central   : best-effort deploy to Maven Central       <- needs the 4 secrets
+#
+# Manual runs can publish to Central without a tag.
 
 on:
   push:
     tags: ['java-v*']
   workflow_dispatch:
+    inputs:
+      publish-central:
+        description: 'Also deploy to Maven Central'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -17,10 +25,84 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: deploy simdpaddleocr4j
+  build:
+    name: build jars
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: java/pom.xml
+
+      - name: Check the tag matches the POM version
+        if: startsWith(github.ref, 'refs/tags/java-v')
+        run: |
+          set -euo pipefail
+          pom_version=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' java/pom.xml | head -1)
+          tag_version="${{ github.ref_name }}"
+          tag_version="${tag_version#java-v}"
+          echo "pom=$pom_version tag=$tag_version"
+          test "$pom_version" = "$tag_version"
+
+      - name: Package
+        run: mvn -B -f java/pom.xml -P release -pl core -am package -DskipTests
+
+      - name: Collect artifacts and checksums
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp java/core/target/simdpaddleocr4j-*.jar dist/
+          cd dist
+          sha256sum ./*.jar > SHA256SUMS.txt
+          ls -lh
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: java-jars
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: attach to GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/java-v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: java-jars
+          path: dist
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          ls -l dist
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" dist/* --title "$tag" --generate-notes
+          fi
+
+  central:
+    name: deploy to Maven Central
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/java-v') || inputs.publish-central
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    # A Sonatype/Cloudflare hiccup must not hide the jars that are already on
+    # the Release page.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v7
 
@@ -57,16 +139,6 @@ jobs:
             </servers>
           </settings>
           XML
-
-      - name: Check the tag matches the POM version
-        if: startsWith(github.ref, 'refs/tags/java-v')
-        run: |
-          set -euo pipefail
-          pom_version=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' java/pom.xml | head -1)
-          tag_version="${{ github.ref_name }}"
-          tag_version="${tag_version#java-v}"
-          echo "pom=$pom_version tag=$tag_version"
-          test "$pom_version" = "$tag_version"
 
       - name: Deploy
         env:

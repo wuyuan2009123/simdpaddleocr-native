@@ -77,6 +77,18 @@ git tag java-v1.0.0 && git push origin java-v1.0.0
 
 The workflow refuses to run when the tag and the POM version disagree.
 
+## GitHub Release artifacts
+
+Every `java-v*` tag also attaches `simdpaddleocr4j-<version>.jar`,
+`-sources.jar`, `-javadoc.jar` and `SHA256SUMS.txt` to the GitHub Release.
+That path needs no Sonatype account, so it is the reliable way to hand the jar
+out; the `central` job runs after it with `continue-on-error`, so a portal
+outage cannot hide assets that are already published.
+
+```bash
+curl -LO https://github.com/wuyuan2009123/simdpaddleocr-native/releases/download/java-v1.0.0/simdpaddleocr4j-1.0.0.jar
+```
+
 ## Portal step
 
 `autoPublish` is `false` in the release profile, so the upload lands in
