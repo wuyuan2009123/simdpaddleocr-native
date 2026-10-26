@@ -86,10 +86,16 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $lib = if ($IsWindows) { 'simdpaddleocr.dll' }
-                 elseif ($IsMacOS) { 'libsimdpaddleocr.dylib' }
-                 else { 'libsimdpaddleocr.so' }
-          dotnet run --project smoke/Smoke.csproj -c Release -- --lib "out/${{ matrix.rid }}/$lib" --models .upstream/models --variant small
+          # Never assume the artifact name: NativeAOT's lib prefix differs per OS.
+          $lib = Get-ChildItem "out/${{ matrix.rid }}" -File |
+                 Where-Object { $_.Extension -in '.dll', '.so', '.dylib' } |
+                 Sort-Object Length -Descending |
+                 Select-Object -First 1
+          if (-not $lib) {
+            Get-ChildItem "out/${{ matrix.rid }}" | Format-Table Name, Length
+            throw "no shared library found in out/${{ matrix.rid }}"
+          }
+          dotnet run --project smoke/Smoke.csproj -c Release -- --lib "$($lib.FullName)" --models .upstream/models --variant small
           if ($LASTEXITCODE -ne 0) { throw "native smoke failed: $LASTEXITCODE" }
 
       - name: Package
@@ -97,14 +103,15 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $rid = '${{ matrix.rid }}'
-          $lib = if ($IsWindows) { 'simdpaddleocr.dll' }
-                 elseif ($IsMacOS) { 'libsimdpaddleocr.dylib' }
-                 else { 'libsimdpaddleocr.so' }
+          $lib = Get-ChildItem "out/$rid" -File |
+                 Where-Object { $_.Extension -in '.dll', '.so', '.dylib' } |
+                 Sort-Object Length -Descending |
+                 Select-Object -First 1
 
           $version = (Get-Content "out/$rid/version.txt" -Raw).Trim()
           $stage = "stage/$rid"
           New-Item -ItemType Directory -Force -Path $stage, 'dist' | Out-Null
-          Copy-Item "out/$rid/$lib" $stage
+          Copy-Item $lib.FullName $stage
           Copy-Item 'native/simdpaddleocr.h' $stage
           Copy-Item '.upstream/LICENSE', '.upstream/THIRD-PARTY-NOTICES.md', "out/$rid/version.txt" $stage
 

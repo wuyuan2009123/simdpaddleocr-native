@@ -47,14 +47,31 @@ internal static unsafe class Program
         libPath = Path.GetFullPath(libPath);
         modelsDir = Path.GetFullPath(modelsDir);
 
-        IntPtr library = NativeLibrary.Load(libPath);
+        if (!File.Exists(libPath))
+        {
+            Console.Error.WriteLine($"FAIL library not found: {libPath}");
+            return 1;
+        }
+
+        Console.WriteLine($"library : {libPath} ({new FileInfo(libPath).Length / 1024} KB)");
+        Console.Out.Flush();
+
         try
         {
-            return Verify(library, libPath, modelsDir, variant, fontSize);
+            IntPtr library = NativeLibrary.Load(libPath);
+            try
+            {
+                return Verify(library, libPath, modelsDir, variant, fontSize);
+            }
+            finally
+            {
+                NativeLibrary.Free(library);
+            }
         }
-        finally
+        catch (Exception ex)
         {
-            NativeLibrary.Free(library);
+            Console.Error.WriteLine($"FAIL {ex.GetType().FullName}: {ex.Message}");
+            return 1;
         }
     }
 
@@ -72,9 +89,9 @@ internal static unsafe class Program
 
         string? Error() => Marshal.PtrToStringUTF8(lastError());
 
-        Console.WriteLine($"library : {Path.GetFileName(libPath)}");
         Console.WriteLine($"version : {Marshal.PtrToStringUTF8(version())}");
         Console.WriteLine($"models  : {modelsDir} ({variant})");
+        Console.Out.Flush();
 
         IntPtr engine;
         fixed (byte* pDir = Utf8Z(modelsDir))

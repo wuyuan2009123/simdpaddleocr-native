@@ -20,8 +20,10 @@ tag you choose and compiles against that checkout:
 | RID | file |
 | --- | --- |
 | `win-x64` / `win-arm64` / `win-x86` | `simdpaddleocr.dll` |
-| `linux-x64` / `linux-arm64` | `libsimdpaddleocr.so` |
-| `osx-x64` / `osx-arm64` | `libsimdpaddleocr.dylib` |
+| `linux-x64` / `linux-arm64` | `simdpaddleocr.so` |
+| `osx-x64` / `osx-arm64` | `simdpaddleocr.dylib` |
+
+NativeAOT emits no `lib` prefix, so `dlopen` needs the exact name or a path.
 
 Each archive also carries the header, `version.txt`, the upstream `LICENSE`
 and `THIRD-PARTY-NOTICES.md`.
@@ -38,7 +40,7 @@ Then push it through the real ABI:
 
 ```bash
 dotnet run --project smoke -c Release -- \
-  --lib bin/Release/net10.0/linux-x64/publish/libsimdpaddleocr.so \
+  --lib bin/Release/net10.0/linux-x64/publish/simdpaddleocr.so \
   --models ../sharp/models --variant small
 ```
 

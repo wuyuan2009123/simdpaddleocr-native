@@ -1,10 +1,10 @@
 /*
  * simdpaddleocr.h - flat C ABI for Sdcb.SimdPaddleOCR (NativeAOT shared library).
  *
- * Build output names:
- *   Windows   simdpaddleocr.dll      (x64 / x86 / arm64)
- *   Linux     libsimdpaddleocr.so
- *   macOS     libsimdpaddleocr.dylib
+ * Build output names (NativeAOT emits no "lib" prefix):
+ *   Windows   simdpaddleocr.dll   (x64 / x86 / arm64)
+ *   Linux     simdpaddleocr.so
+ *   macOS     simdpaddleocr.dylib
  *
  * Calling convention is __cdecl on every platform.
  * Every function is thread-safe. A single ocr_engine may be used concurrently
