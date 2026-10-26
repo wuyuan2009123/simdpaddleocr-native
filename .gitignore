@@ -1,7 +1,18 @@
+# .NET build output
+native/bin/
+native/obj/
+smoke/bin/
+smoke/obj/
 bin/
 obj/
+
+# Java build output
+target/
+
+# CI scratch
 out/
 stage/
 dist/
 .upstream/
+
 *.user

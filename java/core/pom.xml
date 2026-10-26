@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.simdpaddleocr</groupId>
+    <artifactId>simdpaddleocr-parent</artifactId>
+    <version>1.0.0</version>
+  </parent>
+
+  <artifactId>simdpaddleocr-java</artifactId>
+  <name>SimdPaddleOCR Java binding</name>
+  <description>Foreign Function &amp; Memory binding for the SimdPaddleOCR NativeAOT library. No runtime dependencies.</description>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+    </resources>
+  </build>
+</project>
