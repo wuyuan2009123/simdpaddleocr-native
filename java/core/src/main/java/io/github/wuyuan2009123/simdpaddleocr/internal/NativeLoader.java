@@ -1,4 +1,4 @@
-package io.github.simdpaddleocr.internal;
+package io.github.wuyuan2009123.simdpaddleocr.internal;
 
 import java.io.IOException;
 import java.io.InputStream;

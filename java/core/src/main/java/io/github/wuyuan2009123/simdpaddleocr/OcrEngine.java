@@ -1,7 +1,7 @@
-package io.github.simdpaddleocr;
+package io.github.wuyuan2009123.simdpaddleocr;
 
-import io.github.simdpaddleocr.internal.NativeApi;
-import io.github.simdpaddleocr.internal.NativeLoader;
+import io.github.wuyuan2009123.simdpaddleocr.internal.NativeApi;
+import io.github.wuyuan2009123.simdpaddleocr.internal.NativeLoader;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;

@@ -1,4 +1,4 @@
-package io.github.simdpaddleocr.internal;
+package io.github.wuyuan2009123.simdpaddleocr.internal;
 
 import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.JAVA_FLOAT;

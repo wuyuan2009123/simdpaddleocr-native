@@ -1,7 +1,7 @@
-package io.github.simdpaddleocr.server;
+package io.github.wuyuan2009123.simdpaddleocr.server;
 
-import io.github.simdpaddleocr.OcrEngine;
-import io.github.simdpaddleocr.OcrResult;
+import io.github.wuyuan2009123.simdpaddleocr.OcrEngine;
+import io.github.wuyuan2009123.simdpaddleocr.OcrResult;
 import jakarta.annotation.PreDestroy;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

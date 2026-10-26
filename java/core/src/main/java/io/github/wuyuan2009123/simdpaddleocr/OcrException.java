@@ -1,4 +1,4 @@
-package io.github.simdpaddleocr;
+package io.github.wuyuan2009123.simdpaddleocr;
 
 /** Raised when a native call returns a non-zero status or the library cannot be loaded. */
 public final class OcrException extends RuntimeException {

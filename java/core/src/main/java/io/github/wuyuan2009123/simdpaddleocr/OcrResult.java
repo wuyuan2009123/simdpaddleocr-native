@@ -1,4 +1,4 @@
-package io.github.simdpaddleocr;
+package io.github.wuyuan2009123.simdpaddleocr;
 
 import java.util.List;
 import java.util.stream.Collectors;

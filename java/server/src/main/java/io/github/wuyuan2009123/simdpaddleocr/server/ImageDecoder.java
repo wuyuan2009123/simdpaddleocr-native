@@ -1,6 +1,6 @@
-package io.github.simdpaddleocr.server;
+package io.github.wuyuan2009123.simdpaddleocr.server;
 
-import io.github.simdpaddleocr.OcrEngine.PixelFormat;
+import io.github.wuyuan2009123.simdpaddleocr.OcrEngine.PixelFormat;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;

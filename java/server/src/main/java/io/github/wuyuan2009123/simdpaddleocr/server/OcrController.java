@@ -1,7 +1,7 @@
-package io.github.simdpaddleocr.server;
+package io.github.wuyuan2009123.simdpaddleocr.server;
 
-import io.github.simdpaddleocr.OcrException;
-import io.github.simdpaddleocr.OcrResult;
+import io.github.wuyuan2009123.simdpaddleocr.OcrException;
+import io.github.wuyuan2009123.simdpaddleocr.OcrResult;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
